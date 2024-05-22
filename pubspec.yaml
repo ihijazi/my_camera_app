@@ -15,10 +15,8 @@ dependencies:
   path: ^1.9.0
   image_picker: ^1.1.1
   image: ^4.1.7
-
-  flutter_localizations:
-    sdk: flutter
-  intl: any
+  open_settings: ^2.0.2
+  permission_handler: ^11.3.1
 
 
 flutter:
