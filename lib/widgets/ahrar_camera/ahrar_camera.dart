@@ -48,7 +48,7 @@ class _AhrarCameraState extends State<AhrarCamera> {
   @override
   void initState() {
     super.initState();
-
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     _initializeWidget();
   }
 
@@ -66,10 +66,8 @@ class _AhrarCameraState extends State<AhrarCamera> {
     PermissionStatus photosStatus = await Permission.photos.request();
 
     if (cameraStatus.isGranted && photosStatus.isGranted) {
-      // Permissions are granted, proceed
       return true;
     } else {
-      // Show a dialog with an option to open app settings
       showPermissionDialog();
       return false;
     }
@@ -85,18 +83,16 @@ class _AhrarCameraState extends State<AhrarCamera> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop(); // Close the dialog
-              Navigator.of(context)
-                  .pop(); // Navigate back to the previous screen
+              Navigator.of(context).pop();
+              Navigator.of(context).pop();
             },
             child: Text('OK'),
           ),
           TextButton(
             onPressed: () {
               openAppSettings();
-              Navigator.of(context).pop(); // Close the dialog
-              Navigator.of(context)
-                  .pop(); // Navigate back to the previous screen
+              Navigator.of(context).pop();
+              Navigator.of(context).pop();
             },
             child: Text('Settings'),
           ),
@@ -171,7 +167,6 @@ class _AhrarCameraState extends State<AhrarCamera> {
       }
     }
 
-    // If no photos or any error, set loading to false
     setState(() {
       lastGalleryImageLoading = false;
     });
@@ -240,22 +235,27 @@ class _AhrarCameraState extends State<AhrarCamera> {
         this.imageFile = imageFile;
       });
 
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => DisplayPictureScreen(
-            imagePath: imagePath,
-            saveToGallery: widget.saveToGallery,
-            onComplete: (File file) {
-              widget.onComplete([file]);
-            },
-            onSaveComplete: (File savedFile) {
-              setState(() {
-                lastGalleryImage = savedFile;
-              });
-            },
-          ),
-        ),
-      );
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute(
+              builder: (context) => DisplayPictureScreen(
+                imagePath: imagePath,
+                saveToGallery: widget.saveToGallery,
+                onComplete: (File file) {
+                  widget.onComplete([file]);
+                  // Navigator.of(context).pop(); // Pop the DisplayPictureScreen
+                  // Navigator.of(context).pop(); // Pop the AhrarCamera widget
+                },
+                onSaveComplete: (File savedFile) {
+                  setState(() {
+                    lastGalleryImage = savedFile;
+                  });
+                },
+              ),
+            ),
+          )
+          .then((_) => Navigator.of(context)
+              .pop()); // Ensure AhrarCamera is popped when DisplayPictureScreen is closed
     } catch (e) {
       print("Error taking picture: $e");
     }
@@ -276,6 +276,7 @@ class _AhrarCameraState extends State<AhrarCamera> {
         final List<File> imageFiles =
             pickedFiles.map((file) => File(file.path)).toList();
         widget.onComplete(imageFiles);
+        Navigator.of(context).pop(); // Pop the AhrarCamera widget
       }
     } catch (e) {
       print(e);
@@ -382,7 +383,7 @@ class _AhrarCameraState extends State<AhrarCamera> {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: Colors.black, // Set the background color to black
+                    color: Colors.black,
                     border: Border.all(color: Colors.white, width: 2),
                     borderRadius: BorderRadius.circular(12),
                     image: DecorationImage(

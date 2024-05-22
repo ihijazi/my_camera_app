@@ -52,7 +52,7 @@ class DisplayPictureScreen extends StatelessWidget {
                 }
                 onComplete(imageFile);
                 onSaveComplete(imageFile);
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Pop the DisplayPictureScreen
               },
               child: Text(
                 'Next',

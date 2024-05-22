@@ -29,7 +29,9 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context) => AhrarCamera(
           saveToGallery: true,
           onComplete: (files) {
-            // Handle the selected files
+            setState(() {
+              photos.addAll(files);
+            });
           },
           maxPhotos: 4, // Set the maximum number of photos to select
         ),
