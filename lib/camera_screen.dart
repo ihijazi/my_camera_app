@@ -2,6 +2,9 @@ import 'dart:io';
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_picker_android/image_picker_android.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -76,6 +79,10 @@ class _CameraScreenState extends State<CameraScreen> {
     double maxZoomLevel = await backCameraController!.getMaxZoomLevel();
     double minZoomLevel = await backCameraController!.getMinZoomLevel();
 
+    if (maxZoomLevel > 10.0) {
+      maxZoomLevel = 10.0;
+    }
+
     setState(() {
       controller = backCameraController;
       _currentZoomLevel = 1.0;
@@ -112,6 +119,10 @@ class _CameraScreenState extends State<CameraScreen> {
     // Retrieve zoom levels for the selected camera
     double maxZoomLevel = await selectedController.getMaxZoomLevel();
     double minZoomLevel = await selectedController.getMinZoomLevel();
+
+    if (maxZoomLevel > 10.0) {
+      maxZoomLevel = 10.0;
+    }
 
     if (!mounted) return;
 
@@ -151,6 +162,30 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
+  Future<void> pickImages() async {
+    final ImagePicker picker = ImagePicker();
+    final ImagePickerPlatform imagePickerImplementation =
+        ImagePickerPlatform.instance;
+    if (imagePickerImplementation is ImagePickerAndroid) {
+      imagePickerImplementation.useAndroidPhotoPicker = true;
+    }
+
+    try {
+      final List<XFile>? pickedFiles = await picker.pickMultiImage(limit: 4);
+      if (pickedFiles != null && pickedFiles.isNotEmpty) {
+        final List<String> imagePaths =
+            pickedFiles.map((file) => file.path).toList();
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => PhotoDisplayScreen(imagePaths: imagePaths),
+          ),
+        );
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
+
   @override
   void dispose() {
     frontCameraController?.dispose();
@@ -167,18 +202,35 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Future<void> takePicture() async {
+    if (!isInitialized ||
+        controller == null ||
+        !controller!.value.isInitialized) {
+      print("Camera is not initialized or controller is not set.");
+      return;
+    }
+
     try {
-      await controller!.setFlashMode(_flashMode); // Ensure flash mode is set
+      print("Setting flash mode to $_flashMode for taking picture");
+      await controller!
+          .setFlashMode(_flashMode); // Set flash mode for taking picture
+      print("Flash mode set to $_flashMode for taking picture");
 
       final image = await controller!.takePicture();
+      print("Picture taken: ${image.path}");
       final directory = await getTemporaryDirectory();
       final imagePath = path.join(directory.path, '${DateTime.now()}.png');
       final imageFile = File(imagePath);
-      imageFile.writeAsBytesSync(await image.readAsBytes());
+      await imageFile.writeAsBytes(await image.readAsBytes());
+      print("Image saved to $imagePath");
 
+      // Reset flash mode to off after taking the picture
+      print("Resetting flash mode to off");
+      await controller!.setFlashMode(FlashMode.off);
       setState(() {
+        _flashMode = FlashMode.off;
         this.imageFile = imageFile;
       });
+      print("Flash mode reset to off");
 
       Navigator.of(context).push(
         MaterialPageRoute(
@@ -190,7 +242,7 @@ class _CameraScreenState extends State<CameraScreen> {
               final newImagePath =
                   path.join(directory.path, '${DateTime.now()}.png');
               final newImageFile = File(newImagePath);
-              newImageFile.writeAsBytesSync(await imageFile.readAsBytes());
+              await newImageFile.writeAsBytes(await imageFile.readAsBytes());
 
               setState(() {
                 lastGalleryImage = newImageFile;
@@ -210,7 +262,7 @@ class _CameraScreenState extends State<CameraScreen> {
         ),
       );
     } catch (e) {
-      print(e);
+      print("Error taking picture: $e");
     }
   }
 
@@ -232,18 +284,17 @@ class _CameraScreenState extends State<CameraScreen> {
         if (_flashMode == FlashMode.off) {
           newFlashMode = FlashMode.auto;
         } else if (_flashMode == FlashMode.auto) {
-          newFlashMode = FlashMode.torch;
+          newFlashMode = FlashMode.always;
         } else {
           newFlashMode = FlashMode.off;
         }
       }
 
-      await controller!.setFlashMode(newFlashMode);
       setState(() {
         _flashMode = newFlashMode;
       });
     } catch (e) {
-      print(e);
+      print("Error toggling flash: $e");
     }
   }
 
@@ -355,7 +406,11 @@ class _CameraScreenState extends State<CameraScreen> {
           else
             Container(
               color: Colors.black,
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Colors.white, // Change progress circle color to white
+                ),
+              ),
             ),
           if (_tapPosition != null)
             Positioned(
@@ -389,7 +444,7 @@ class _CameraScreenState extends State<CameraScreen> {
             bottom: 70,
             left: 30,
             child: GestureDetector(
-              onTap: loadLastGalleryImage,
+              onTap: pickImages,
               child: Container(
                 width: 50,
                 height: 50,
