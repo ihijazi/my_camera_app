@@ -151,7 +151,8 @@ class _CameraScreenState extends State<CameraScreen> {
       type: RequestType.image,
     );
 
-    List<AssetEntity> photos = await albums[0].getAssetListPaged(0, 1);
+    List<AssetEntity> photos =
+        await albums[0].getAssetListPaged(page: 0, size: 1);
     if (photos.isNotEmpty) {
       File? file = await photos[0].file;
       if (file != null) {

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'photo_display_screen.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 class DisplayPictureScreen extends StatelessWidget {
   final String imagePath;
@@ -38,7 +39,9 @@ class DisplayPictureScreen extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.black, // Button background color
               ),
-              onPressed: () {
+              onPressed: () async {
+                // Save the photo to the gallery
+                await savePhotoToGallery(File(imagePath));
                 onNext();
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -62,5 +65,19 @@ class DisplayPictureScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> savePhotoToGallery(File imageFile) async {
+    try {
+      final AssetEntity? asset = await PhotoManager.editor
+          .saveImageWithPath(title: 'Photo', imageFile.path);
+      if (asset != null) {
+        print("Photo saved to gallery: ${asset.id}");
+      } else {
+        print("Failed to save photo to gallery.");
+      }
+    } catch (e) {
+      print("Error saving photo to gallery: $e");
+    }
   }
 }
