@@ -28,12 +28,10 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => AhrarCamera(
           saveToGallery: true,
-          onComplete: (List<File> files) {
-            setState(() {
-              photos = files;
-            });
-            Navigator.of(context).pop();
+          onComplete: (files) {
+            // Handle the selected files
           },
+          maxPhotos: 4, // Set the maximum number of photos to select
         ),
       ),
     );

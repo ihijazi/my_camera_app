@@ -14,9 +14,14 @@ import 'package:permission_handler/permission_handler.dart';
 
 class AhrarCamera extends StatefulWidget {
   final bool saveToGallery;
+  final int maxPhotos;
+
   final Function(List<File>) onComplete;
 
-  AhrarCamera({required this.saveToGallery, required this.onComplete});
+  AhrarCamera(
+      {required this.saveToGallery,
+      required this.onComplete,
+      this.maxPhotos = 5});
 
   @override
   _AhrarCameraState createState() => _AhrarCameraState();
@@ -52,8 +57,6 @@ class _AhrarCameraState extends State<AhrarCamera> {
     if (permissionsGranted) {
       initCamera();
       loadLastGalleryImage();
-    } else {
-      //Navigator.of(context).pop();
     }
   }
 
@@ -253,7 +256,8 @@ class _AhrarCameraState extends State<AhrarCamera> {
     }
 
     try {
-      final List<XFile>? pickedFiles = await picker.pickMultiImage(limit: 5);
+      final List<XFile>? pickedFiles =
+          await picker.pickMultiImage(limit: widget.maxPhotos);
       if (pickedFiles != null && pickedFiles.isNotEmpty) {
         final List<File> imageFiles =
             pickedFiles.map((file) => File(file.path)).toList();
