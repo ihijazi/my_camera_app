@@ -33,6 +33,7 @@ class _AhrarCameraState extends State<AhrarCamera> {
   bool isInitialized = false;
   File? imageFile;
   File? lastGalleryImage;
+  bool lastGalleryImageLoading = true;
   double _currentZoomLevel = 1.0;
   double _maxZoomLevel = 1.0;
   double _minZoomLevel = 1.0;
@@ -146,21 +147,34 @@ class _AhrarCameraState extends State<AhrarCamera> {
   }
 
   Future<void> loadLastGalleryImage() async {
+    setState(() {
+      lastGalleryImageLoading = true;
+    });
+
     List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(
       onlyAll: true,
       type: RequestType.image,
     );
 
-    List<AssetEntity> photos =
-        await albums[0].getAssetListPaged(page: 0, size: 1);
-    if (photos.isNotEmpty) {
-      File? file = await photos[0].file;
-      if (file != null) {
-        setState(() {
-          lastGalleryImage = file;
-        });
+    if (albums.isNotEmpty) {
+      List<AssetEntity> photos =
+          await albums[0].getAssetListPaged(page: 0, size: 1);
+      if (photos.isNotEmpty) {
+        File? file = await photos[0].file;
+        if (file != null) {
+          setState(() {
+            lastGalleryImage = file;
+            lastGalleryImageLoading = false;
+          });
+          return;
+        }
       }
     }
+
+    // If no photos or any error, set loading to false
+    setState(() {
+      lastGalleryImageLoading = false;
+    });
   }
 
   Future<void> switchCamera() async {
@@ -358,36 +372,27 @@ class _AhrarCameraState extends State<AhrarCamera> {
                 ),
               ),
             ),
-          Positioned(
-            bottom: 70,
-            left: 30,
-            child: GestureDetector(
-              onTap: pickImages,
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.black, // Set the background color to black
-                  border: Border.all(color: Colors.white, width: 2),
-                  borderRadius: BorderRadius.circular(12),
-                  image: lastGalleryImage != null
-                      ? DecorationImage(
-                          image: FileImage(lastGalleryImage!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
+          if (lastGalleryImage != null)
+            Positioned(
+              bottom: 70,
+              left: 30,
+              child: GestureDetector(
+                onTap: pickImages,
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.black, // Set the background color to black
+                    border: Border.all(color: Colors.white, width: 2),
+                    borderRadius: BorderRadius.circular(12),
+                    image: DecorationImage(
+                      image: FileImage(lastGalleryImage!),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
-                child: lastGalleryImage == null
-                    ? Center(
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : null,
               ),
             ),
-          ),
           Positioned(
             bottom: 60,
             left: 0,
@@ -445,7 +450,9 @@ class _AhrarCameraState extends State<AhrarCamera> {
                     ? Icons.flash_off
                     : _flashMode == FlashMode.auto
                         ? Icons.flash_auto
-                        : Icons.flash_on,
+                        : _flashMode == FlashMode.always
+                            ? Icons.flash_on
+                            : Icons.flash_off,
                 color: Colors.white,
                 size: 30,
               ),
@@ -459,6 +466,7 @@ class _AhrarCameraState extends State<AhrarCamera> {
               icon: Icon(Icons.close, color: Colors.white, size: 30),
               onPressed: () {
                 widget.onComplete([]);
+                Navigator.of(context).pop();
               },
             ),
           ),
