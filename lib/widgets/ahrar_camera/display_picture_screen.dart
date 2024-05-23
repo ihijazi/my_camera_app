@@ -1,13 +1,19 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'photo_display_screen.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 class DisplayPictureScreen extends StatelessWidget {
   final String imagePath;
-  final VoidCallback onNext;
+  final bool saveToGallery;
+  final Function(File) onComplete;
+  final Function(File) onSaveComplete;
 
-  DisplayPictureScreen({required this.imagePath, required this.onNext});
+  DisplayPictureScreen({
+    required this.imagePath,
+    required this.saveToGallery,
+    required this.onComplete,
+    required this.onSaveComplete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -40,18 +46,13 @@ class DisplayPictureScreen extends StatelessWidget {
                 backgroundColor: Colors.black, // Button background color
               ),
               onPressed: () async {
-                // Save the photo to the gallery
-                await savePhotoToGallery(File(imagePath));
-                onNext();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => PhotoDisplayScreen(
-                      imagePaths: [
-                        imagePath
-                      ], // Pass the image path to the new screen
-                    ),
-                  ),
-                );
+                final imageFile = File(imagePath);
+                if (saveToGallery) {
+                  await savePhotoToGallery(imageFile);
+                }
+                onComplete(imageFile);
+                onSaveComplete(imageFile);
+                Navigator.of(context).pop(); // Pop the DisplayPictureScreen
               },
               child: Text(
                 'Next',
@@ -70,7 +71,7 @@ class DisplayPictureScreen extends StatelessWidget {
   Future<void> savePhotoToGallery(File imageFile) async {
     try {
       final AssetEntity? asset = await PhotoManager.editor
-          .saveImageWithPath(title: 'Photo', imageFile.path);
+          .saveImageWithPath(title: 'Photo taken by Ahrar', imageFile.path);
       if (asset != null) {
         print("Photo saved to gallery: ${asset.id}");
       } else {
