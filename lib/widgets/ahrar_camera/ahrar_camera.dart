@@ -11,17 +11,18 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:flutter/services.dart';
 import 'display_picture_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:uuid/uuid.dart';
 
 class AhrarCamera extends StatefulWidget {
   final bool saveToGallery;
   final int maxPhotos;
-
   final Function(List<File>) onComplete;
 
-  AhrarCamera(
-      {required this.saveToGallery,
-      required this.onComplete,
-      this.maxPhotos = 5});
+  AhrarCamera({
+    required this.saveToGallery,
+    required this.onComplete,
+    this.maxPhotos = 5,
+  });
 
   @override
   _AhrarCameraState createState() => _AhrarCameraState();
@@ -44,6 +45,7 @@ class _AhrarCameraState extends State<AhrarCamera> {
   CameraController? backCameraController;
   CameraDescription? frontCamera;
   CameraDescription? backCamera;
+  String? _tempImagePath;
 
   @override
   void initState() {
@@ -109,9 +111,10 @@ class _AhrarCameraState extends State<AhrarCamera> {
         (camera) => camera.lensDirection == CameraLensDirection.back);
 
     frontCameraController = CameraController(
-        frontCamera!, ResolutionPreset.high,
+        frontCamera!, ResolutionPreset.ultraHigh,
         enableAudio: false);
-    backCameraController = CameraController(backCamera!, ResolutionPreset.high,
+    backCameraController = CameraController(
+        backCamera!, ResolutionPreset.ultraHigh,
         enableAudio: false);
 
     try {
@@ -187,7 +190,8 @@ class _AhrarCameraState extends State<AhrarCamera> {
     await controller?.dispose();
 
     selectedController = CameraController(
-        isUsingFrontCamera ? frontCamera! : backCamera!, ResolutionPreset.high,
+        isUsingFrontCamera ? frontCamera! : backCamera!,
+        ResolutionPreset.ultraHigh,
         enableAudio: false);
 
     await selectedController.initialize();
@@ -225,14 +229,18 @@ class _AhrarCameraState extends State<AhrarCamera> {
 
       final image = await controller!.takePicture();
       final directory = await getTemporaryDirectory();
-      final imagePath = path.join(directory.path, '${DateTime.now()}.png');
+      final uuid = Uuid();
+      final imagePath = path.join(directory.path,
+          '${uuid.v4()}.jpg'); // Using a random UUID for the file name
       final imageFile = File(imagePath);
-      await imageFile.writeAsBytes(await image.readAsBytes());
+      await imageFile.writeAsBytes(await image.readAsBytes(),
+          flush: true); // Ensuring high quality
 
       await controller!.setFlashMode(FlashMode.off);
       setState(() {
         _flashMode = FlashMode.off;
         this.imageFile = imageFile;
+        _tempImagePath = imagePath; // Store the temporary image path
       });
 
       Navigator.of(context)
@@ -243,8 +251,6 @@ class _AhrarCameraState extends State<AhrarCamera> {
                 saveToGallery: widget.saveToGallery,
                 onComplete: (File file) {
                   widget.onComplete([file]);
-                  // Navigator.of(context).pop(); // Pop the DisplayPictureScreen
-                  // Navigator.of(context).pop(); // Pop the AhrarCamera widget
                 },
                 onSaveComplete: (File savedFile) {
                   setState(() {
@@ -465,7 +471,13 @@ class _AhrarCameraState extends State<AhrarCamera> {
             left: 20,
             child: IconButton(
               icon: Icon(Icons.close, color: Colors.white, size: 30),
-              onPressed: () {
+              onPressed: () async {
+                if (_tempImagePath != null) {
+                  final tempFile = File(_tempImagePath!);
+                  if (await tempFile.exists()) {
+                    await tempFile.delete();
+                  }
+                }
                 widget.onComplete([]);
                 Navigator.of(context).pop();
               },
