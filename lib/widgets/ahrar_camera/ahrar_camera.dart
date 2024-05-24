@@ -46,6 +46,8 @@ class _AhrarCameraState extends State<AhrarCamera> {
   CameraDescription? frontCamera;
   CameraDescription? backCamera;
   String? _tempImagePath;
+  Offset? _focusPoint;
+  bool _isZoomOverlayVisible = false;
 
   @override
   void initState() {
@@ -329,6 +331,31 @@ class _AhrarCameraState extends State<AhrarCamera> {
                     1 / (controller!.value.aspectRatio * mediaSize.aspectRatio);
 
                 return GestureDetector(
+                  onTapDown: (details) async {
+                    if (controller == null ||
+                        !controller!.value.isInitialized) {
+                      return;
+                    }
+
+                    final RenderBox box =
+                        context.findRenderObject() as RenderBox;
+                    final Offset localPosition =
+                        box.globalToLocal(details.globalPosition);
+                    final double dx = localPosition.dx / box.size.width;
+                    final double dy = localPosition.dy / box.size.height;
+                    final Offset point = Offset(dx, dy);
+
+                    await controller!.setFocusPoint(point);
+                    setState(() {
+                      _focusPoint = details.localPosition;
+                    });
+
+                    Future.delayed(Duration(seconds: 1), () {
+                      setState(() {
+                        _focusPoint = null;
+                      });
+                    });
+                  },
                   onScaleUpdate: (ScaleUpdateDetails details) async {
                     if (controller == null ||
                         !controller!.value.isInitialized) {
@@ -359,6 +386,13 @@ class _AhrarCameraState extends State<AhrarCamera> {
 
                     setState(() {
                       _currentZoomLevel = newZoomLevel;
+                      _isZoomOverlayVisible = true;
+                    });
+
+                    Future.delayed(Duration(seconds: 1), () {
+                      setState(() {
+                        _isZoomOverlayVisible = false;
+                      });
                     });
                   },
                   child: Transform.scale(
@@ -494,6 +528,36 @@ class _AhrarCameraState extends State<AhrarCamera> {
                 ),
               ),
             ),
+          if (_focusPoint != null)
+            Positioned(
+              left: _focusPoint!.dx - 20,
+              top: _focusPoint!.dy - 20,
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.yellow, width: 2),
+                ),
+              ),
+            ),
+          if (_isZoomOverlayVisible)
+            Positioned(
+              bottom:
+                  140, // Adjust this value as needed to position above the capture button
+              left: MediaQuery.of(context).size.width / 2 - 50,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  'Zoom: ${_currentZoomLevel.toStringAsFixed(1)}x',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -505,21 +569,16 @@ class _AhrarCameraState extends State<AhrarCamera> {
     try {
       FlashMode newFlashMode;
 
-      if (isUsingFrontCamera) {
-        if (_flashMode == FlashMode.off) {
-          newFlashMode = FlashMode.auto;
-        } else {
-          newFlashMode = FlashMode.off;
-        }
+      // Remove the condition for front camera, treating it the same as the back camera
+      if (_flashMode == FlashMode.off) {
+        newFlashMode = FlashMode.auto;
+      } else if (_flashMode == FlashMode.auto) {
+        newFlashMode = FlashMode.always;
       } else {
-        if (_flashMode == FlashMode.off) {
-          newFlashMode = FlashMode.auto;
-        } else if (_flashMode == FlashMode.auto) {
-          newFlashMode = FlashMode.always;
-        } else {
-          newFlashMode = FlashMode.off;
-        }
+        newFlashMode = FlashMode.off;
       }
+
+      await controller!.setFlashMode(newFlashMode);
 
       setState(() {
         _flashMode = newFlashMode;
